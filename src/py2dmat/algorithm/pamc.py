@@ -169,18 +169,21 @@ class Algorithm(py2dmat.algorithm.montecarlo.AlgorithmBase):
 
         bprint = True
         if bprint and self.mpirank == 0:
-            print("β mean[f] Err[f] nreplica log(Z/Z0) acceptance_ratio")
+            print("beta mean[f] Err[f] nreplica log(Z/Z0) acceptance_ratio")
 
-        file_trial = open("trial_T0.txt", "w")
-        file_result = open("result_T0.txt", "w")
-        self._write_result_header(file_result, ("weight", "ancestor"))
-        self._write_result(
-            file_result, [np.exp(self.logweights), self.walker_ancestors]
-        )
-        self._write_result_header(file_trial, ("weight", "ancestor"))
-        self._write_result(file_trial, [np.exp(self.logweights), self.walker_ancestors])
-        file_trial.close()
-        file_result.close()
+        for Tindex, beta in enumerate(self.betas):
+            file_result = open(f"result_T{Tindex}.txt", "w")
+            self._write_result_header(file_result, ("weight", "ancestor"))
+            if Tindex == 0:
+                self._write_result(file_result, [np.exp(self.logweights), self.walker_ancestors])
+            file_result.close()
+
+            file_trial = open(f"trial_T{Tindex}.txt", "w")
+            self._write_result_header(file_trial, ("weight", "ancestor"))
+            if Tindex == 0:
+                self._write_result(file_trial, [np.exp(self.logweights), self.walker_ancestors])
+            file_trial.close()
+
         self.istep += 1
 
         minidx = np.argmin(self.fx)
@@ -193,14 +196,8 @@ class Algorithm(py2dmat.algorithm.montecarlo.AlgorithmBase):
         for Tindex, beta in enumerate(self.betas):
             self.Tindex = Tindex
 
-            if Tindex > 0:
-                file_trial = open(f"trial_T{Tindex}.txt", "w")
-                file_result = open(f"result_T{Tindex}.txt", "w")
-                self._write_result_header(file_result, ["weight", "ancestor"])
-                self._write_result_header(file_trial, ["weight", "ancestor"])
-            else:
-                file_trial = open(f"trial_T{Tindex}.txt", "a")
-                file_result = open(f"result_T{Tindex}.txt", "a")
+            file_trial = open(f"trial_T{Tindex}.txt", "a")
+            file_result = open(f"result_T{Tindex}.txt", "a")
 
             if self.nwalkers != 0:
                 for _ in range(self.numsteps_for_T[Tindex]):
@@ -240,8 +237,8 @@ class Algorithm(py2dmat.algorithm.montecarlo.AlgorithmBase):
         if index_from_reset > 0:
             res = self._gather_information(index_from_reset)
             self._save_stats(res)
-        file_result.close()
-        file_trial.close()
+        # file_result.close()
+        # file_trial.close()
         if self.mpisize > 1:
             self.mpicomm.barrier()
         print(
