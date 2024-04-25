@@ -20,24 +20,29 @@ import py2dmat
 
 # type hints
 from pathlib import Path
-from typing import Callable, Optional, Dict
+from typing import Callable, Optional, Union, Dict
 
 
 class Solver:
-    #-----
     root_dir: Path
     output_dir: Path
     proc_dir: Path
     work_dir: Path
+    dimension: Optional[int]
     _name: str
-    dimension: int
+    _func: Optional[Callable[[np.ndarray], float]]
     timer: Dict[str, Dict]
-    #-----
     x: np.ndarray
     fx: float
-    _func: Optional[Callable[[np.ndarray], float]]
 
-    def __init__(self, info: py2dmat.Info) -> None:
+    def __init__(self, info: Optional[py2dmat.Info] = None,
+                 *,
+                 root_dir: Union[Path,str] = ".",
+                 output_dir: Union[Path,str] = ".",
+                 dimension: Optional[int] = None,
+                 function: Optional[Callable[[np.ndarray],float]] = None,
+                 function_name: str = "function",
+                 **kwargs) -> None:
         """
         Initialize the solver.
 
@@ -45,21 +50,21 @@ class Solver:
         ----------
         info: Info
         """
-        #-----
-        #super().__init__(info)
-        self.root_dir = info.base["root_dir"]
-        self.output_dir = info.base["output_dir"]
+        if info is not None:
+            self.root_dir = info.base["root_dir"]
+            self.output_dir = info.base["output_dir"]
+            self.dimension = info.solver.get("dimension") or info.base.get("dimension")
+        else:
+            self.root_dir = Path(root_dir).expanduser().absolute()
+            self.output_dir = (self.root_dir / output_dir).absolute()
+            self.dimension = dimension
         self.proc_dir = self.output_dir / str(py2dmat.mpi.rank())
         self.work_dir = self.proc_dir
-        self._name = ""
+
+        self._func = function
+        self._name = function_name
+
         self.timer = {"prepare": {}, "run": {}, "post": {}}
-        if "dimension" in info.solver:
-            self.dimension = info.solver["dimension"]
-        else:
-            self.dimension = info.base["dimension"]
-        #-----
-        self._name = "function"
-        self._func = None
 
     @property
     def name(self) -> str:
