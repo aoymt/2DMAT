@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see http://www.gnu.org/licenses/.
 
-from typing import Dict, List
+from typing import Dict, List, Any, Optional, Union
 import itertools
 import os
 import os.path
@@ -27,6 +27,33 @@ import numpy as np
 import py2dmat
 from py2dmat import exception
 
+# Parameters
+# ----------
+# [base]
+#   root_dir
+#   output_dir
+#   dimension (used when solver.dimension is not set)
+# [solver]
+#   dimension
+# [solver.config]
+#   sxrd_exec_file
+#   bulk_struc_in_file
+# [solver.param]
+#   scale_factor
+#   opt_scale_factor
+#   type_vector
+# [[solver.param.domain]]
+#   domain_occupancy
+# [[solver.param.domain.atom]]
+#   name
+#   pos_center
+#   DWfactor
+#   occupancy
+#   displace_vector
+#   opt_DW
+#   opt_occupancy
+# [solver.reference]
+#   f_in_file
 
 class Solver:
     #-----
@@ -42,23 +69,32 @@ class Solver:
 
     dimension: int
 
-    def __init__(self, info: py2dmat.Info):
-        #-----
-        #super().__init__(info)
-        self.root_dir = info.base["root_dir"]
-        self.output_dir = info.base["output_dir"]
-        self.proc_dir = self.output_dir / str(py2dmat.mpi.rank())
-        self.work_dir = self.proc_dir
-        self._name = ""
-        self.timer = {"prepare": {}, "run": {}, "post": {}}
-        if "dimension" in info.solver:
-            self.dimension = info.solver["dimension"]
-        else:
-            self.dimension = info.base["dimension"]
-        #-----
+    def __init__(self, info: Optional[py2dmat.Info] = None,
+                 *,
+                 root_dir: Union[Path,str] = ".",
+                 output_dir: Union[Path,str] = ".",
+                 dimension: Optional[int] = None,
+                 params: Optional[Dict[str,Any]] = None,
+                 **rest) -> None:
 
         self._name = "sxrd"
-        info_s = info.solver
+        self.timer = {"prepare": {}, "run": {}, "post": {}}
+
+        if info is not None:
+            self.root_dir = info.base["root_dir"]
+            self.output_dir = info.base["output_dir"]
+            self.dimension = info.solver.get("dimension") or info.base.get("dimension")
+            info_s = info.solver
+        else:
+            self.root_dir = Path(root_dir).expanduser().absolute()
+            self.output_dir = (self.root_dir / Path(output_dir)).expanduser()
+            self.dimension = dimension
+            info_s = params
+        self.proc_dir = self.output_dir / str(py2dmat.mpi.rank())
+        self.work_dir = self.proc_dir
+
+        if self.dimension is None:
+            raise RuntimeError("dimension is not set")
 
         # Check keywords
         def check_keywords(key, segment, registered_list):
@@ -116,7 +152,12 @@ class Solver:
             raise exception.InputError(f"ERROR: solver ({p2solver}) is not found")
         self.path_to_f_in = info_s["reference"]["f_in_file"]
         self.path_to_bulk = info_s["config"]["bulk_struc_in_file"]
-        self.input = Solver.Input(info)
+
+        self.input = Solver.Input(info,
+                                  root_dir=self.root_dir,
+                                  output_dir=self.output_dir,
+                                  dimension=self.dimension,
+                                  params=info_s)
 
     @property
     def name(self) -> str:
@@ -166,12 +207,25 @@ class Solver:
         output_dir: Path
         dimension: int
 
-        def __init__(self, info):
-            self.dimension = info.base["dimension"]
-            self.root_dir = info.base["root_dir"]
-            self.output_dir = info.base["output_dir"]
+        def __init__(self, info = None,
+                     *,
+                     root_dir = None,
+                     output_dir = None,
+                     dimension = None,
+                     params = None) -> None:
 
-            info_s = info.solver
+            if info is not None:
+                self.dimension = info.base["dimension"]
+                self.root_dir = info.base["root_dir"]
+                self.output_dir = info.base["output_dir"]
+                info_s = info.solver
+            else:
+                self.dimension = dimension
+                self.root_dir = root_dir
+                self.output_dir = output_dir
+                info_s = params
+
+            #info_s = info.solver
             self.info_param = info_s["param"]
             # Set default values
             # Initial values
