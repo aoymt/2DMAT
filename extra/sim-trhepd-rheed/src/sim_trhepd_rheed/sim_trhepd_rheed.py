@@ -301,7 +301,7 @@ class Solver:
             if info is not None:
                 self.root_dir = info.base["root_dir"]
                 self.output_dir = info.base["output_dir"]
-                self.dimension = info.solver["dimension"] or info.base["dimension"]
+                self.dimension = info.solver.get("dimension") or info.base.get("dimension")
                 info_s = info.solver
             else:
                 self.root_dir = Path(root_dir).expanduser().absolute()
@@ -550,7 +550,7 @@ class Solver:
             if info is not None:
                 #self.root_dir = info.base["root_dir"]
                 #self.output_dir = info.base["output_dir"]
-                self.dimension = info.solver["dimension"] or info.base["dimension"]
+                self.dimension = info.solver.get("dimension") or info.base.get("dimension")
                 info_s = info.solver
             else:
                 #self.root_dir = Path(root_dir).expanduser().absolute()
