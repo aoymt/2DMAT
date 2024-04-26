@@ -59,7 +59,12 @@ def main():
         print(f"ERROR: Unknown algorithm ({algname})")
         exit(1)
 
-    solver = Solver(info)
+    # solver = Solver(info)
+    solver = Solver(
+        root_dir=info.base.get("root_dir"),
+        output_dir=info.base.get("output_dir"),
+        dimension=info.base.get("dimension"),
+        params=info.solver)
     runner = py2dmat.Runner(solver, info)
     alg = Algorithm(info, runner)
     alg.main()
