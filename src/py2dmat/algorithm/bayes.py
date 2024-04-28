@@ -67,7 +67,7 @@ class Algorithm(py2dmat.algorithm.AlgorithmBase):
         print(f"interval = {self.interval}")
         print(f"num_rand_basis = {self.num_rand_basis}")
 
-        self.mesh_list, actions = self._meshgrid(info, split=False)
+        self.mesh_list, actions = self._meshgrid(info.algorithm["param"], split=False)
         X_normalized = physbo.misc.centering(self.mesh_list[:, 1:])
         comm = self.mpicomm if self.mpisize > 1 else None
         self.policy = physbo.search.discrete.policy(test_X=X_normalized, comm=comm)

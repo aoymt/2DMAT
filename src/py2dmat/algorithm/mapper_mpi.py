@@ -28,7 +28,7 @@ class Algorithm(py2dmat.algorithm.AlgorithmBase):
 
     def __init__(self, info: py2dmat.Info, runner: py2dmat.Runner = None) -> None:
         super().__init__(info=info, runner=runner)
-        self.mesh_list, actions = self._meshgrid(info, split=True)
+        self.mesh_list, actions = self._meshgrid(info.algorithm["param"], split=True)
 
     def _run(self) -> None:
         # Make ColorMap

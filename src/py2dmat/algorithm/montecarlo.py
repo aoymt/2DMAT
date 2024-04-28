@@ -100,7 +100,7 @@ class AlgorithmBase(py2dmat.algorithm.AlgorithmBase):
         info_param = info.algorithm["param"]
         if "mesh_path" in info_param:
             self.iscontinuous = False
-            self.node_coordinates = self._meshgrid(info)[0][:, 1:]
+            self.node_coordinates = self._meshgrid(info_param)[0][:, 1:]
             self.nnodes = self.node_coordinates.shape[0]
             self.inode = self.rng.randint(self.nnodes, size=self.nwalkers)
             self.x = self.node_coordinates[self.inode, :]
@@ -129,7 +129,7 @@ class AlgorithmBase(py2dmat.algorithm.AlgorithmBase):
         else:
             self.iscontinuous = True
             self.x, self.xmin, self.xmax, self.xunit = self._read_param(
-                info, num_walkers=nwalkers
+                info.algorithm["param"], num_walkers=nwalkers
             )
         self.fx = np.zeros(self.nwalkers)
         self.best_fx = 0.0

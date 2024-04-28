@@ -31,7 +31,7 @@ from py2dmat import exception, mpi
 
 # for type hints
 from pathlib import Path
-from typing import List, Optional, TYPE_CHECKING, Dict, Tuple
+from typing import List, Dict, Tuple, Any, Optional, Union, TYPE_CHECKING
 
 
 if TYPE_CHECKING:
@@ -62,67 +62,89 @@ class AlgorithmBase(metaclass=ABCMeta):
     status: AlgorithmStatus = AlgorithmStatus.INIT
 
     @abstractmethod
-    def __init__(
-        self, info: py2dmat.Info, runner: Optional[py2dmat.Runner] = None
-    ) -> None:
+    def __init__(self,
+                 runner: Optional[py2dmat.Runner] = None,
+                 info: Optional[py2dmat.Info] = None,
+                 *,
+                 dimension: Optional[int] = None,
+                 root_dir: Union[Path,str] = ".",
+                 output_dir: Union[Path,str] = ".",
+                 params: Optional[Dict[str,Any]] = None,
+                 **rest) -> None:
+
         self.mpicomm = mpi.comm()
         self.mpisize = mpi.size()
         self.mpirank = mpi.rank()
+
         self.timer = {"init": {}, "prepare": {}, "run": {}, "post": {}}
         self.timer["init"]["total"] = 0.0
         self.status = AlgorithmStatus.INIT
 
-        if "dimension" not in info.base:
-            raise exception.InputError(
-                "ERROR: base.dimension is not defined in the input"
-            )
-        try:
-            self.dimension = int(str(info.base["dimension"]))
-        except ValueError:
-            raise exception.InputError(
-                "ERROR: base.dimension should be positive integer"
-            )
-        if self.dimension < 1:
-            raise exception.InputError(
-                "ERROR: base.dimension should be positive integer"
-            )
+        if info is not None:
+            info_algorithm = info.algorithm
+            # dimension = info.base.get("dimension")
 
-        if "label_list" in info.algorithm:
-            label = info.algorithm["label_list"]
-            if len(label) != self.dimension:
-                raise exception.InputError(
-                    f"ERROR: len(label_list) != dimension ({len(label)} != {self.dimension})"
-                )
-            self.label_list = label
+            if "dimension" not in info.base:
+                raise exception.InputError("ERROR: base.dimension is not defined in the input")
+            try:
+                self.dimension = int(str(info.base["dimension"]))
+            except ValueError:
+                raise exception.InputError("ERROR: base.dimension should be positive integer")
+            if self.dimension < 1:
+                raise exception.InputError("ERROR: base.dimension should be positive integer")
+
+            self.root_dir = info.base["root_dir"]
+            self.output_dir = info.base["output_dir"]
+
         else:
-            self.label_list = [f"x{d+1}" for d in range(self.dimension)]
+            info_algorithm = params
+            self.dimension = dimension
 
-        self.__init_rng(info)
+            self.root_dir = Path(root_dir).expanduser().absolute()
+            self.output_dir = (self.root_dir / Path(output_dir)).expanduser()
 
-        self.root_dir = info.base["root_dir"]
-        self.output_dir = info.base["output_dir"]
         self.proc_dir = self.output_dir / str(self.mpirank)
         self.proc_dir.mkdir(parents=True, exist_ok=True)
         # Some cache of the filesystem may delay making a dictionary
         # especially when mkdir just after removing the old one
         while not self.proc_dir.is_dir():
             time.sleep(0.1)
+
         if self.mpisize > 1:
             self.mpicomm.Barrier()
+
         if runner is not None:
             self.set_runner(runner)
 
-    def __init_rng(self, info: py2dmat.Info) -> None:
-        seed = info.algorithm.get("seed", None)
-        seed_delta = info.algorithm.get("seed_delta", 314159)
+        if "label_list" in info_algorithm:
+            label = info_algorithm["label_list"]
+            if self.dimension is not None and len(label) != self.dimension:
+                raise exception.InputError(
+                    f"ERROR: len(label_list) != dimension ({len(label)} != {self.dimension})"
+                )
+            self.label_list = label
+
+            if self.dimension is None:
+                self.dimension = len(label)
+        else:
+            if self.dimension is not None:
+                self.label_list = [f"x{d+1}" for d in range(self.dimension)]
+
+        self.__init_rng(info_algorithm)
+
+
+    def __init_rng(self, info_algorithm = {}) -> None:
+        seed = info_algorithm.get("seed", None)
+        seed_delta = info_algorithm.get("seed_delta", 314159)
 
         if seed is None:
             self.rng = np.random.RandomState()
         else:
             self.rng = np.random.RandomState(seed + self.mpirank * seed_delta)
 
-    def _read_param(
-        self, info: py2dmat.Info, num_walkers: int = 1
+    def _read_param(self,
+                    info_param: Dict[str,Any] = {},
+                    num_walkers: int = 1
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Generate continuous data from info
 
@@ -134,11 +156,6 @@ class AlgorithmBase(metaclass=ABCMeta):
         max_list
         unit_list
         """
-        if "param" not in info.algorithm:
-            raise exception.InputError(
-                "ERROR: [algorithm.param] is not defined in the input"
-            )
-        info_param = info.algorithm["param"]
 
         if "min_list" not in info_param:
             raise exception.InputError(
@@ -210,8 +227,9 @@ class AlgorithmBase(metaclass=ABCMeta):
                 )
         return initial_list, min_list, max_list, unit_list
 
-    def _meshgrid(
-        self, info: py2dmat.Info, split: bool = False
+    def _meshgrid(self,
+                  info_param: Dict[str,Any],
+                  split: bool = False
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Generate discrete data from info
 
@@ -228,12 +246,6 @@ class AlgorithmBase(metaclass=ABCMeta):
             Ncandidate x dimension
         id_list:
         """
-
-        if "param" not in info.algorithm:
-            raise exception.InputError(
-                "ERROR: [algorithm.param] is not defined in the input"
-            )
-        info_param = info.algorithm["param"]
 
         if "mesh_path" in info_param:
             mesh_path = (

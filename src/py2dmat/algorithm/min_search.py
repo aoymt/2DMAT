@@ -54,7 +54,7 @@ class Algorithm(py2dmat.algorithm.AlgorithmBase):
             self.min_list,
             self.max_list,
             self.unit_list,
-        ) = self._read_param(info)
+        ) = self._read_param(info.algorithm["param"])
         self.initial_list = self.initial_list.flatten()
 
         info_minimize = info.algorithm.get("minimize", {})
