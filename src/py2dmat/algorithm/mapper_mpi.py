@@ -22,13 +22,37 @@ import time
 
 import py2dmat
 
+# for type hints
+from typing import List, Dict, Tuple, Any, Optional, Union, TYPE_CHECKING
+if TYPE_CHECKING:
+    from mpi4py import MPI
 
 class Algorithm(py2dmat.algorithm.AlgorithmBase):
     mesh_list: np.ndarray
 
-    def __init__(self, info: py2dmat.Info, runner: py2dmat.Runner = None) -> None:
-        super().__init__(info=info, runner=runner)
-        self.mesh_list, actions = self._meshgrid(info.algorithm["param"], split=True)
+    def __init__(self,
+                 info: Optional[py2dmat.Info] = None,
+                 runner: Optional[py2dmat.Runner] = None,
+                 *,
+                 root_dir: Union[Path,str] = ".",
+                 output_dir: Union[Path,str] = ".",
+                 dimension: Optional[int] = None,
+                 params: Optional[Dict[str,Any]] = None,
+                 **rest) -> None:
+
+        super().__init__(info=info,
+                         runner=runner,
+                         root_dir=root_dir,
+                         output_dir=output_dir,
+                         dimension=dimension,
+                         params=params)
+
+        if info is not None:
+            info_param = info.algorithm["param"]
+        else:
+            info_param = params.get("param", {})
+
+        self.mesh_list, actions = self._meshgrid(info_param, split=True)
 
     def _run(self) -> None:
         # Make ColorMap
