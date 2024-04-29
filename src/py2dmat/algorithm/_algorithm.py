@@ -156,6 +156,11 @@ class AlgorithmBase(metaclass=ABCMeta):
         max_list
         unit_list
         """
+        # if "param" not in info.algorithm:
+        #     raise exception.InputError(
+        #         "ERROR: [algorithm.param] is not defined in the input"
+        #     )
+        # info_param = info.algorithm["param"]
 
         if "min_list" not in info_param:
             raise exception.InputError(
@@ -246,6 +251,12 @@ class AlgorithmBase(metaclass=ABCMeta):
             Ncandidate x dimension
         id_list:
         """
+
+        # if "param" not in info.algorithm:
+        #     raise exception.InputError(
+        #         "ERROR: [algorithm.param] is not defined in the input"
+        #     )
+        # info_param = info.algorithm["param"]
 
         if "mesh_path" in info_param:
             mesh_path = (
