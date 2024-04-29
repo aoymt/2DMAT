@@ -63,8 +63,8 @@ class AlgorithmBase(metaclass=ABCMeta):
 
     @abstractmethod
     def __init__(self,
-                 runner: Optional[py2dmat.Runner] = None,
                  info: Optional[py2dmat.Info] = None,
+                 runner: Optional[py2dmat.Runner] = None,
                  *,
                  dimension: Optional[int] = None,
                  root_dir: Union[Path,str] = ".",
