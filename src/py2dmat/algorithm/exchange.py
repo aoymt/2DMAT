@@ -14,6 +14,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see http://www.gnu.org/licenses/.
 
+from typing import TextIO, List, Dict, Tuple, Any, Optional, Union
+from pathlib import Path
+
 from io import open
 import copy
 import time
@@ -72,13 +75,32 @@ class Algorithm(py2dmat.algorithm.montecarlo.AlgorithmBase):
     rep2T: np.ndarray
     T2rep: np.ndarray
 
-    def __init__(self, info: py2dmat.Info, runner: py2dmat.Runner = None) -> None:
+    def __init__(self,
+                 info: Optional[py2dmat.Info] = None,
+                 runner: Optional[py2dmat.Runner] = None,
+                 *,
+                 dimension: Optional[int] = None,
+                 root_dir: Union[Path,str] = ".",
+                 output_dir: Union[Path,str] = ".",
+                 params: Optional[Dict[str,Any]] = None,
+                 **rest) -> None:
+
         time_sta = time.perf_counter()
 
-        info_exchange = info.algorithm["exchange"]
+        if info is not None:
+            info_algorithm = info.algorithm
+        else:
+            info_algorithm = params
+        info_exchange = info_algorithm["exchange"]
         nwalkers = info_exchange.get("nreplica_per_proc", 1)
 
-        super().__init__(info=info, runner=runner, nwalkers=nwalkers)
+        super().__init__(info=info,
+                         runner=runner,
+                         nwalkers=nwalkers,
+                         root_dir=root_dir,
+                         output_dir=output_dir,
+                         dimension=dimension,
+                         params=params)
 
         # if self.mpicomm is None:
         #     msg = "ERROR: algorithm.exchange requires mpi4py, but mpi4py cannot be imported"
