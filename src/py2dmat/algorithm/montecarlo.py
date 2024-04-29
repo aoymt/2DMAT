@@ -15,10 +15,10 @@
 # along with this program. If not, see http://www.gnu.org/licenses/.
 
 import typing
-from typing import TextIO, Union, List, Tuple
+from typing import TextIO, List, Dict, Tuple, Any, Optional, Union
 import copy
 import time
-import pathlib
+from pathlib import Path
 
 import numpy as np
 
@@ -91,13 +91,46 @@ class AlgorithmBase(py2dmat.algorithm.AlgorithmBase):
     ntrial: int
     naccepted: int
 
-    def __init__(
-        self, info: py2dmat.Info, runner: py2dmat.Runner = None, nwalkers: int = 1
-    ) -> None:
+    def __init__(self,
+                 info: Optional[py2dmat.Info] = None,
+                 runner: Optional[py2dmat.Runner] = None,
+                 nwalkers: int = 1,
+                 *,
+                 root_dir: Union[Path,str] = ".",
+                 output_dir: Union[Path,str] = ".",
+                 dimension: Optional[int] = None,
+                 params: Optional[Dict[str,Any]] = None,
+                 **rest) -> None:
+
         time_sta = time.perf_counter()
-        super().__init__(info=info, runner=runner)
+
+        super().__init__(info=info,
+                         runner=runner,
+                         root_dir=root_dir,
+                         output_dir=output_dir,
+                         dimension=dimension,
+                         params=params)
+
+        if info is not None:
+            info_algorithm = info.algorithm
+            info_param = info.algorithm["param"]
+        else:
+            info_algorithm = params
+            info_param = params.get("param", {})
+
         self.nwalkers = nwalkers
-        info_param = info.algorithm["param"]
+
+        # [algorithm.param]
+        #   (discrete)
+        #   mesh_path
+        #   neighborlist_path
+        #   (continuous)
+        #   min_list
+        #   max_list
+        #   num_list
+        #   unit_list
+        #   initial_list
+        
         if "mesh_path" in info_param:
             self.iscontinuous = False
             self.node_coordinates = self._meshgrid(info_param)[0][:, 1:]
@@ -111,8 +144,7 @@ class AlgorithmBase(py2dmat.algorithm.AlgorithmBase):
                 )
                 raise RuntimeError(msg)
             nn_path = (
-                self.root_dir
-                / pathlib.Path(info_param["neighborlist_path"]).expanduser()
+                self.root_dir / Path(info_param["neighborlist_path"]).expanduser()
             )
             self.neighbor_list = load_neighbor_list(nn_path, nnodes=self.nnodes)
             if not py2dmat.util.graph.is_connected(self.neighbor_list):
@@ -129,7 +161,7 @@ class AlgorithmBase(py2dmat.algorithm.AlgorithmBase):
         else:
             self.iscontinuous = True
             self.x, self.xmin, self.xmax, self.xunit = self._read_param(
-                info.algorithm["param"], num_walkers=nwalkers
+                info_algorithm["param"], num_walkers=nwalkers
             )
         self.fx = np.zeros(self.nwalkers)
         self.best_fx = 0.0
@@ -142,7 +174,7 @@ class AlgorithmBase(py2dmat.algorithm.AlgorithmBase):
         self.naccepted = 0
         self.ntrial = 0
 
-    def read_Ts(self, info: dict, numT: int = None) -> np.ndarray:
+    def read_Ts(self, info: Dict, numT: Optional[int] = None) -> np.ndarray:
         """
 
         Returns
@@ -232,7 +264,7 @@ class AlgorithmBase(py2dmat.algorithm.AlgorithmBase):
                 )
             return 1.0 / Ts
 
-    def _evaluate(self, in_range: np.ndarray = None) -> np.ndarray:
+    def _evaluate(self, in_range: Optional[np.ndarray] = None) -> np.ndarray:
         """evaluate current "Energy"s
 
         ``self.fx`` will be overwritten with the result
@@ -360,7 +392,7 @@ class AlgorithmBase(py2dmat.algorithm.AlgorithmBase):
             self.best_iwalker = typing.cast(int, minidx)
         self._write_result(file_result, extra_info_to_write=extra_info_to_write)
 
-    def _write_result_header(self, fp, extra_names=None) -> None:
+    def _write_result_header(self, fp, extra_names: Optional[Union[List,Tuple]] =None) -> None:
         if self.input_as_beta:
             fp.write("# step walker beta fx")
         else:
@@ -372,7 +404,7 @@ class AlgorithmBase(py2dmat.algorithm.AlgorithmBase):
                 fp.write(f" {label}")
         fp.write("\n")
 
-    def _write_result(self, fp, extra_info_to_write: Union[List, Tuple] = None) -> None:
+    def _write_result(self, fp, extra_info_to_write: Optional[Union[List,Tuple]] = None) -> None:
         for iwalker in range(self.nwalkers):
             if isinstance(self.Tindex, int):
                 beta = self.betas[self.Tindex]
