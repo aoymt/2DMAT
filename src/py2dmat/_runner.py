@@ -21,16 +21,14 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 
 import py2dmat
-import py2dmat.util.read_matrix
 import py2dmat.util.mapping
 import py2dmat.util.limitation
 from py2dmat.util.logger import Logger
-from py2dmat.exception import InputError
 
 # type hints
 from pathlib import Path
-from typing import List, Optional
-from . import mpi
+from typing import List, Dict, Any, Optional
+#from . import mpi
 
 
 class Run(metaclass=ABCMeta):
@@ -51,7 +49,7 @@ class Run(metaclass=ABCMeta):
 
     @abstractmethod
     def submit(self, solver):
-        pass
+        raise NotImplementedError
 
 
 class Runner(object):
@@ -61,35 +59,42 @@ class Runner(object):
     def __init__(self,
                  solver,
                  info: Optional[py2dmat.Info] = None,
+                 *,
                  mapping = None,
-                 limitation = None) -> None:
+                 limitation = None,
+                 dimension: Optional[int] = None,
+                 params: Optional[Dict[str,Any]] = None) -> None:
         """
 
         Parameters
         ----------
         Solver: py2dmat.solver.SolverBase object
         """
+        if info is not None:
+            info_runner = info.runner
+            dimension = info.base.get("dimension", dimension)
+        else:
+            info_runner = params
+
         self.solver = solver
         self.solver_name = solver.name
-        self.logger = Logger(info)
+        self.logger = Logger(params=info_runner.get("log", {}))
 
         if mapping is not None:
             self.mapping = mapping
-        elif "mapping" in info.runner:
-            info_mapping = info.runner["mapping"]
+        elif "mapping" in info_runner:
+            info_mapping = info_runner["mapping"]
             # N.B.: only Affine mapping is supported at present
             self.mapping = py2dmat.util.mapping.Affine.from_dict(info_mapping)
         else:
             # trivial mapping
             self.mapping = lambda xs: xs
         
-        self.ndim = info.base["dimension"]
-
         if limitation is not None:
             self.limitation = limitation
-        elif "limitation" in info.runner:
-            info_limitation = info.runner["limitation"]
-            self.limitation = py2dmat.util.limitation.Inequality.from_dict(info_limitation, self.ndim)
+        elif "limitation" in info_runner:
+            info_limitation = info_runner["limitation"]
+            self.limitation = py2dmat.util.limitation.Inequality.from_dict(info_limitation, dimension)
         else:
             self.limitation = py2dmat.util.limitation.Unlimited()
 
