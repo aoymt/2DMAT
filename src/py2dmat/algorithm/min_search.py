@@ -14,7 +14,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see http://www.gnu.org/licenses/.
 
-from typing import List
+from typing import List, Dict, Tuple, Any, Optional, Union
+from pathlib import Path
 import time
 
 import numpy as np
@@ -46,18 +47,39 @@ class Algorithm(py2dmat.algorithm.AlgorithmBase):
     fx_for_simplex_list: List[float]
     callback_list: List[List[int]]
 
-    def __init__(self, info: py2dmat.Info, runner: py2dmat.Runner = None) -> None:
-        super().__init__(info=info, runner=runner)
+    def __init__(self,
+                 info: Optional[py2dmat.Info] = None,
+                 runner: Optional[py2dmat.Runner] = None,
+                 *,
+                 root_dir: Union[Path,str] = ".",
+                 output_dir: Union[Path,str] = ".",
+                 dimension: Optional[int] = None,
+                 params: Optional[Dict[str,Any]] = None,
+                 **rest) -> None:
+
+        super().__init__(info=info,
+                         runner=runner,
+                         root_dir=root_dir,
+                         output_dir=output_dir,
+                         dimension=dimension,
+                         params=params)
+
+        if info is not None:
+            info_algorithm = info.algorithm
+            info_param = info.algorithm["param"]
+        else:
+            info_algorithm = params
+            info_param = params.get("param", {})
 
         (
             self.initial_list,
             self.min_list,
             self.max_list,
             self.unit_list,
-        ) = self._read_param(info)
+        ) = self._read_param(info_param)
         self.initial_list = self.initial_list.flatten()
 
-        info_minimize = info.algorithm.get("minimize", {})
+        info_minimize = info_algorithm.get("minimize", {})
         self.initial_scale_list = info_minimize.get(
             "initial_scale_list", [0.25] * self.dimension
         )

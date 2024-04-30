@@ -14,7 +14,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see http://www.gnu.org/licenses/.
 
-from typing import List
+from typing import TextIO, List, Dict, Tuple, Any, Optional, Union
+from pathlib import Path
 import time
 
 import physbo
@@ -43,11 +44,30 @@ class Algorithm(py2dmat.algorithm.AlgorithmBase):
     fx_list: List[float]
     param_list: List[np.ndarray]
 
-    def __init__(self, info: py2dmat.Info, runner: py2dmat.Runner = None) -> None:
-        super().__init__(info=info, runner=runner)
+    def __init__(self,
+                 info: Optional[py2dmat.Info] = None,
+                 runner: Optional[py2dmat.Runner] = None,
+                 *,
+                 dimension: Optional[int] = None,
+                 root_dir: Union[Path,str] = ".",
+                 output_dir: Union[Path,str] = ".",
+                 params: Optional[Dict[str,Any]] = None,
+                 **rest) -> None:
 
-        info_param = info.algorithm.get("param", {})
-        info_bayes = info.algorithm.get("bayes", {})
+        super().__init__(info=info,
+                         runner=runner,
+                         root_dir=root_dir,
+                         output_dir=output_dir,
+                         dimension=dimension,
+                         params=params)
+
+        if info is not None:
+            info_algorithm = info.algorithm
+        else:
+            info_algorithm = params
+
+        info_param = info_algorithm.get("param", {})
+        info_bayes = info_algorithm.get("bayes", {})
 
         for key in ("random_max_num_probes", "bayes_max_num_probes", "score", "interval", "num_rand_basis"):
             if key in info_param and key not in info_bayes:
@@ -67,12 +87,12 @@ class Algorithm(py2dmat.algorithm.AlgorithmBase):
         print(f"interval = {self.interval}")
         print(f"num_rand_basis = {self.num_rand_basis}")
 
-        self.mesh_list, actions = self._meshgrid(info, split=False)
+        self.mesh_list, actions = self._meshgrid(info_algorithm["param"], split=False)
         X_normalized = physbo.misc.centering(self.mesh_list[:, 1:])
         comm = self.mpicomm if self.mpisize > 1 else None
         self.policy = physbo.search.discrete.policy(test_X=X_normalized, comm=comm)
-        if "seed" in info.algorithm:
-            seed = info.algorithm["seed"]
+        if "seed" in info_algorithm:
+            seed = info_algorithm["seed"]
             self.policy.set_seed(seed)
         self.param_list = []
         self.fx_list = []

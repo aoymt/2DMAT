@@ -14,7 +14,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see http://www.gnu.org/licenses/.
 
-from typing import List, Dict, Union
+from typing import TextIO, List, Dict, Tuple, Any, Optional, Union
+from pathlib import Path
 
 from io import open
 import copy
@@ -92,13 +93,32 @@ class Algorithm(py2dmat.algorithm.montecarlo.AlgorithmBase):
     Fmeans: np.ndarray
     Ferrs: np.ndarray
 
-    def __init__(self, info: py2dmat.Info, runner: py2dmat.Runner = None) -> None:
+    def __init__(self,
+                 info: Optional[py2dmat.Info] = None,
+                 runner: Optional[py2dmat.Runner] = None,
+                 *,
+                 dimension: Optional[int] = None,
+                 root_dir: Union[Path,str] = ".",
+                 output_dir: Union[Path,str] = ".",
+                 params: Optional[Dict[str,Any]] = None,
+                 **rest) -> None:
+
         time_sta = time.perf_counter()
 
-        info_pamc = info.algorithm["pamc"]
+        if info is not None:
+            info_algorithm = info.algorithm
+        else:
+            info_algorithm = params
+        info_pamc = info_algorithm["pamc"]
         nwalkers = info_pamc.get("nreplica_per_proc", 1)
 
-        super().__init__(info=info, runner=runner, nwalkers=nwalkers)
+        super().__init__(info=info,
+                         runner=runner,
+                         nwalkers=nwalkers,
+                         root_dir=root_dir,
+                         output_dir=output_dir,
+                         dimension=dimension,
+                         params=params)
 
         numsteps = info_pamc.get("numsteps", 0)
         numsteps_annealing = info_pamc.get("numsteps_annealing", 0)
