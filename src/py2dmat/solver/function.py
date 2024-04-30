@@ -24,7 +24,6 @@ from typing import Callable, Optional, Dict
 
 
 class Solver:
-    #-----
     root_dir: Path
     output_dir: Path
     proc_dir: Path
@@ -32,60 +31,39 @@ class Solver:
     _name: str
     dimension: int
     timer: Dict[str, Dict]
-    #-----
-    x: np.ndarray
-    fx: float
     _func: Optional[Callable[[np.ndarray], float]]
 
-    def __init__(self, info: py2dmat.Info) -> None:
+    def __init__(self,
+                 info: Optional[py2dmat.Info] = None,
+                 fn: Optional[Callable[[np.ndarray], float]] = None) -> None:
         """
         Initialize the solver.
 
         Parameters
         ----------
         info: Info
+        fn: callable object
         """
-        #-----
-        #super().__init__(info)
         self.root_dir = info.base["root_dir"]
         self.output_dir = info.base["output_dir"]
         self.proc_dir = self.output_dir / str(py2dmat.mpi.rank())
         self.work_dir = self.proc_dir
-        self._name = ""
-        self.timer = {"prepare": {}, "run": {}, "post": {}}
-        if "dimension" in info.solver:
-            self.dimension = info.solver["dimension"]
-        else:
-            self.dimension = info.base["dimension"]
-        #-----
+
+        self.dimension = info.solver.get("dimension") or info.base.get("dimension")
+
         self._name = "function"
-        self._func = None
+        self._func = fn
+
+        self.timer = {"prepare": {}, "run": {}, "post": {}}
 
     @property
     def name(self) -> str:
         return self._name
 
     def evaluate(self, x: np.ndarray, args = (), nprocs: int = 1, nthreads: int = 1) -> float:
-        self.prepare(x, args)
-        cwd = os.getcwd()
-        os.chdir(self.work_dir)
-        self.run(nprocs, nthreads)
-        os.chdir(cwd)
-        result = self.get_results()
-        return result
-
-    def prepare(self, x: np.ndarray, args = ()) -> None:
-        self.x = x
-
-    def run(self, nprocs: int = 1, nthreads: int = 1) -> None:
         if self._func is None:
-            raise RuntimeError(
-                "ERROR: function is not set. Make sure that `set_function` is called."
-            )
-        self.fx = self._func(self.x)
-
-    def get_results(self) -> float:
-        return self.fx
+            raise RuntimeError("ERROR: function is not set. Make sure that `set_function` is called.")
+        return self._func(x)
 
     def set_function(self, f: Callable[[np.ndarray], float]) -> None:
         self._func = f
