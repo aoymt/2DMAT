@@ -1,0 +1,31 @@
+[base]
+dimension = 2
+
+[solver]
+name = "sim-trhepd-rheed"
+run_scheme = "subprocess"
+
+[solver.config]
+cal_number = [1]
+
+[solver.param]
+string_list = ["value_01", "value_02" ]
+
+[solver.post]
+normalization = "TOTAL"
+
+[solver.reference]
+path = "experiment.txt"
+exp_number = [1]
+
+[algorithm]
+name = "bayes"
+label_list = ["z1", "z2"]
+seed = 1
+
+[algorithm.param]
+mesh_path = "./MeshData.txt"
+
+[algorithm.bayes]
+random_max_num_probes = 10
+bayes_max_num_probes = 20
