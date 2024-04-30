@@ -14,11 +14,45 @@ from . import lib_make_convolution
 
 # for type hints
 from pathlib import Path
-from typing import List, Dict, Optional, TYPE_CHECKING
+from typing import List, Dict, Any, Optional, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from mpi4py import MPI
 
+# Parameters
+# ----------
+# [base]
+#   root_dir
+#   output_dir
+#   dimension (used when solver.dimension is not set)
+# [solver]
+#   dimension
+#   run_scheme
+#   generate_rocking_curve
+# [solver.config]
+#   surface_exec_file (used when run_scheme=subprocess)
+#   surface_input_file
+#   surface_template_file
+#   bulk_output_file (default=bulkP.b when run_scheme=subprocess, bulkP.txt when connect_so)
+#   surface_output_file
+#   calculated_first_line
+#   calculated_last_line
+#   calculated_info_line
+#   cal_number
+# [solver.param]
+#   string_list
+# [solver.post]
+#   Rfactor_type
+#   normalization
+#   weight_type
+#   spot_weight
+#   omega
+#   remove_work_dir
+# [solver.reference]
+#   path
+#   reference_first_line
+#   reference_last_line
+#   exp_number
 
 class Solver:
     #-----
@@ -38,29 +72,46 @@ class Solver:
     detail_timer: Dict
     path_to_solver: Path
 
-    def __init__(self, info: py2dmat.Info):
-        #-----
-        # super().__init__(info)
-        self.root_dir = info.base["root_dir"]
-        self.output_dir = info.base["output_dir"]
+    def __init__(self, info: Optional[py2dmat.Info] = None, # for compatibility
+                 *,
+                 root_dir: Union[Path,str] = ".",
+                 output_dir: Union[Path,str] = ".",
+                 dimension: Optional[int] = None,
+                 params: Optional[Dict[str,Any]] = None,
+                 **rest) -> None:
+
+        self._name = "sim_trhepd_rheed_mb_connect"
+        self.timer = {"prepare": {}, "run": {}, "post": {}}
+
+        if info is not None:
+            self.root_dir = info.base["root_dir"]
+            self.output_dir = info.base["output_dir"]
+            self.dimension = info.solver.get("dimension") or info.base.get("dimension")
+            info_s = info.solver
+        else:
+            self.root_dir = Path(root_dir).expanduser().absolute()
+            self.output_dir = (self.root_dir / Path(output_dir)).expanduser()
+            self.dimension = dimension
+            info_s = params
         self.proc_dir = self.output_dir / str(py2dmat.mpi.rank())
         self.work_dir = self.proc_dir
-        self._name = ""
-        self.timer = {"prepare": {}, "run": {}, "post": {}}
-        if "dimension" in info.solver:
-            self.dimension = info.solver["dimension"]
-        else:
-            self.dimension = info.base["dimension"]
-        #-----
+
+        if self.dimension is None:
+            if "param" in info_s and type(info_s["param"]) is dict:
+                self.dimension = len(info_s["param"].get("string_list", []))
+            else:
+                raise RuntimeError("dimension is not set")
+
+        if rest:
+            print("INFO: unsupported parameters found: {}".format(rest))
+
         self.mpicomm = mpi.comm()
         self.mpisize = mpi.size()
         self.mpirank = mpi.rank()
 
-        self._name = "sim_trhepd_rheed_mb_connect"
+        self.run_scheme = info_s.get("run_scheme", "subprocess")
 
-        self.run_scheme = info.solver.get("run_scheme", "subprocess")
         scheme_list = ["subprocess", "connect_so"]
-
         if self.run_scheme not in scheme_list:
             raise exception.InputError("ERROR : solver.run_scheme should be 'subprocess' or 'connect_so'.")
 
@@ -69,7 +120,7 @@ class Solver:
 
         elif self.run_scheme == "subprocess":
             # path to surf.exe
-            p2solver = info.solver["config"].get("surface_exec_file", "surf.exe")
+            p2solver = info_s["config"].get("surface_exec_file", "surf.exe")
             if os.path.dirname(p2solver) != "":
                 # ignore ENV[PATH]
                 self.path_to_solver = self.root_dir / Path(p2solver).expanduser()
@@ -82,12 +133,29 @@ class Solver:
                         break
             if not os.access(self.path_to_solver, mode=os.X_OK):
                 raise exception.InputError(f"ERROR: solver ({p2solver}) is not found")
+        else:
+            raise exception.InputError("ERROR : solver.run_scheme should be 'subprocess' or 'connect_so'.")
 
         self.isLogmode = False
         self.set_detail_timer()
 
-        self.input = Solver.Input(info, self.isLogmode, self.detail_timer)
-        self.output = Solver.Output(info, self.isLogmode, self.detail_timer)
+        # self.input = Solver.Input(info, self.isLogmode, self.detail_timer)
+        # self.output = Solver.Output(info, self.isLogmode, self.detail_timer)
+
+        self.input = Solver.Input(info,
+                                  isLogmode=self.isLogmode,
+                                  detail_timer=self.detail_timer,
+                                  root_dir=self.root_dir,
+                                  output_dir=self.output_dir,
+                                  dimension=self.dimension,
+                                  params=params)
+        self.output = Solver.Output(info,
+                                    isLogmode=self.isLogmode,
+                                    detail_timer=self.detail_timer,
+                                    root_dir=self.root_dir,
+                                    output_dir=self.output_dir,
+                                    dimension=self.dimension,
+                                    params=params)
 
     @property
     def name(self) -> str:
@@ -214,7 +282,15 @@ class Solver:
         surface_template_file: Path
         template_file_origin: List[str]
 
-        def __init__(self, info, isLogmode, detail_timer):
+        def __init__(self, info: Optional[py2dmat.Info] = None,
+                     *,
+                     isLogmode: bool = False,
+                     detail_timer: Dict = {},
+                     root_dir: Union[Path,str] = ".",
+                     output_dir: Union[Path,str] = ".",
+                     dimension: Optional[int] = None,
+                     params: Optional[Dict[str,Any]] = None) -> None:
+
             self.mpicomm = mpi.comm()
             self.mpisize = mpi.size()
             self.mpirank = mpi.rank()
@@ -222,16 +298,19 @@ class Solver:
             self.isLogmode = isLogmode
             self.detail_timer = detail_timer
 
-            self.root_dir = info.base["root_dir"]
-            self.output_dir = info.base["output_dir"]
-
-            if "dimension" in info.solver:
-                self.dimension = info.solver["dimension"]
+            if info is not None:
+                self.root_dir = info.base["root_dir"]
+                self.output_dir = info.base["output_dir"]
+                self.dimension = info.solver.get("dimension") or info.base.get("dimension")
+                info_s = info.solver
             else:
-                self.dimension = info.base["dimension"]
+                self.root_dir = Path(root_dir).expanduser().absolute()
+                self.output_dir = (self.root_dir / Path(output_dir)).expanduser()
+                self.dimension = dimension
+                info_s = params
 
             # read info
-            info_s = info.solver
+            #info_s = info.solver
             self.run_scheme = info_s["run_scheme"]
             self.generate_rocking_curve = info_s.get("generate_rocking_curve", False)
 
@@ -452,7 +531,15 @@ class Solver:
         calculated_info_line: int
         cal_number: List
 
-        def __init__(self, info, isLogmode, detail_timer):
+        def __init__(self, info: Optional[py2dmat.Info] = None,
+                     *,
+                     isLogmode: bool = False,
+                     detail_timer: Dict = {},
+                     root_dir: Union[Path,str] = ".",
+                     output_dir: Union[Path,str] = ".",
+                     dimension: Optional[int] = None,
+                     params: Optional[Dict[str,Any]] = None) -> None:
+
             self.mpicomm = mpi.comm()
             self.mpisize = mpi.size()
             self.mpirank = mpi.rank()
@@ -460,12 +547,22 @@ class Solver:
             self.isLogmode = isLogmode
             self.detail_timer = detail_timer
 
-            if "dimension" in info.solver:
-                self.dimension = info.solver["dimension"]
+            if info is not None:
+                #self.root_dir = info.base["root_dir"]
+                #self.output_dir = info.base["output_dir"]
+                self.dimension = info.solver.get("dimension") or info.base.get("dimension")
+                info_s = info.solver
             else:
-                self.dimension = info.base["dimension"]
+                #self.root_dir = Path(root_dir).expanduser().absolute()
+                #self.output_dir = (self.root_dir / Path(output_dir)).expanduser()
+                self.dimension = dimension
+                info_s = params
+            # if "dimension" in info.solver:
+            #     self.dimension = info.solver["dimension"]
+            # else:
+            #     self.dimension = info.base["dimension"]
 
-            info_s = info.solver
+            # info_s = info.solver
             self.run_scheme = info_s["run_scheme"]
 
             # If self.run_scheme == "connect_so",
