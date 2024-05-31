@@ -57,10 +57,6 @@ class Solver:
 
         self.timer = Timer(["evaluate"])
 
-    def __del__(self):
-        with open(self.output_dir/"solver_timer.log", "w") as fp:
-            self.timer.report(fp)
-
     @property
     def name(self) -> str:
         return self._name
