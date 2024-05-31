@@ -17,6 +17,7 @@
 import os
 import numpy as np
 import py2dmat
+from py2dmat.util.timer import Timer
 
 # type hints
 from pathlib import Path
@@ -54,7 +55,11 @@ class Solver:
         self._name = "function"
         self._func = fn
 
-        self.timer = {"prepare": {}, "run": {}, "post": {}}
+        self.timer = Timer(["evaluate"])
+
+    def __del__(self):
+        with open(self.output_dir/"solver_timer.log", "w") as fp:
+            self.timer.report(fp)
 
     @property
     def name(self) -> str:
@@ -63,7 +68,11 @@ class Solver:
     def evaluate(self, x: np.ndarray, args = (), nprocs: int = 1, nthreads: int = 1) -> float:
         if self._func is None:
             raise RuntimeError("ERROR: function is not set. Make sure that `set_function` is called.")
-        return self._func(x)
+        self.timer.start("evaluate")
+        fx = self._func(x)
+        self.timer.stop("evaluate")
+
+        return fx
 
     def set_function(self, f: Callable[[np.ndarray], float]) -> None:
         self._func = f
