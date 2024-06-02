@@ -1,10 +1,8 @@
-#!/bin/sh
-
 sh ./prepare.sh
 
 ./bulk.exe
 
-time sim-trhepd-rheed input.toml | tee log.txt
+time python3 ../../../../src/py2dmat_main.py input.toml | tee log.txt
 
 echo diff res.txt ref.txt
 res=0

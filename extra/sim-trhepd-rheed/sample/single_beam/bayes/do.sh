@@ -1,10 +1,8 @@
-#!/bin/sh
-
 sh prepare.sh
 
 ./bulk.exe
 
-time sim-trhepd-rheed input.toml
+time python3 ../../../../src/py2dmat_main.py input.toml
 
 echo diff BayesData.txt ref_BayesData.txt
 res=0
