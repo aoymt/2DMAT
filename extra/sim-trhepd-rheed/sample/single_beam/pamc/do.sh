@@ -1,13 +1,8 @@
-#!/bin/sh
-
-MPIEXEC=mpiexec --oversubscribe
-#MPIEXEC=mpirun
-
 sh prepare.sh
 
 ./bulk.exe
 
-time $MPIEXEC -np 4 sim-trhepd-rheed input.toml
+time mpiexec --oversubscribe -np 4 python3 ../../../../src/py2dmat_main.py input.toml
 
 echo diff output/fx.txt ref.txt
 res=0
