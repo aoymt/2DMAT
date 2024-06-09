@@ -114,7 +114,6 @@ class AlgorithmBase(metaclass=ABCMeta):
 
     def set_runner(self, runner: py2dmat.Runner) -> None:
         self.runner = runner
-        self.runner.prepare(self.proc_dir)
 
     def prepare(self) -> None:
         if self.runner is None:
@@ -133,6 +132,7 @@ class AlgorithmBase(metaclass=ABCMeta):
             raise RuntimeError(msg)
         original_dir = os.getcwd()
         os.chdir(self.proc_dir)
+        self.runner.prepare(self.proc_dir)
         self._run()
         self.runner.post()
         os.chdir(original_dir)
