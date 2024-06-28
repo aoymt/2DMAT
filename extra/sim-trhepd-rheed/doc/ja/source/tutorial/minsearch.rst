@@ -111,7 +111,6 @@ Nelder-Mead法による最適化
 
     [solver.config]
     cal_number = [1]
-    surface_exec_file = "./surf.exe"
 
     [solver.param]
     string_list = ["value_01", "value_02", "value_03" ]
@@ -151,8 +150,6 @@ Nelder-Mead法による最適化
 ソルバーの設定は、サブセクションの ``[solver.config]``, ``[solver.param]``, ``[solver.reference]``, ``[solver.post]`` で行います。
 
 ``[solver.config]`` セクションではメインプログラム内部で呼び出す ``surf.exe`` により得られた出力ファイルを読み込む際のオプションを指定します。
-
-- ``surface_exec_file`` は ``surf.exe`` のパスを指定します。
 
 - ``cal_number`` は出力ファイルの何列目を読み込むかを指定します。
 

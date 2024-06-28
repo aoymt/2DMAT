@@ -105,7 +105,6 @@ Solver, Runner, Algorithm の順にインスタンスを作成した後、Algori
             "run_scheme": "subprocess",
             "generate_rocking_curve": True,
             "config": {
-                "surface_exec_file": "surf.exe",
                 "cal_number": [1],
             },
             "param": {

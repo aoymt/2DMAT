@@ -72,7 +72,6 @@
 
   [solver.config]
   cal_number = [1]
-  surface_exec_file = "./surf.exe"
 
   [solver.param]
   string_list = ["value_01", "value_02" ]
