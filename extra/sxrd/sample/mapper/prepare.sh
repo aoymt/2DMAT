@@ -1,3 +1,4 @@
-rm -rf ./0
-rm -f ./ColorMap.txt
+#!/bin/sh
+
+rm -rf ./output
 rm -f ./lsfit.in

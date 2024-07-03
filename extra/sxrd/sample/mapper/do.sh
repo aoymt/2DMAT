@@ -4,9 +4,9 @@ sh prepare.sh
 
 time py2dmat-sxrd input.toml
 
-echo diff ColorMap.txt ref_ColorMap.txt
+echo diff output/ColorMap.txt ref_ColorMap.txt
 res=0
-diff ColorMap.txt ref_ColorMap.txt || res=$?
+diff output/ColorMap.txt ref_ColorMap.txt || res=$?
 if [ $res -eq 0 ]; then
   echo TEST PASS
   true
