@@ -358,7 +358,7 @@ class AlgorithmBase(py2dmat.algorithm.AlgorithmBase):
         # old_setting = np.seterr(over="ignore")
         old_setting = np.seterr(all="ignore")
         probs = np.exp(-beta * fdiff)
-        probs[np.isnan(probs)] = 0.0
+        #probs[np.isnan(probs)] = 0.0
         np.seterr(**old_setting)
         
         if not self.iscontinuous:
